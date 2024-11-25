@@ -9,7 +9,7 @@ const WeatherApp = () => {
   const [expandedCity, setExpandedCity] = useState(null);
 
   // Replace with your actual API key
-  const API_KEY = '30fd01887347631e7a963ae3db59adca';
+  const API_KEY = 'YOUR_API_KEY';
   const BASE_URL = 'https://api.openweathermap.org/data/2.5';
 
   const fetchWeather = async () => {

@@ -6,7 +6,7 @@ A modern, responsive weather dashboard built with React that allows you to track
 
 - 🌍 **Multi-city Tracking**: Add and monitor multiple cities simultaneously
 - 🎯 **Real-time Updates**: Get current weather conditions and 5-day forecasts
-- 🎨 **Modern UI**: Clean and intuitive interface with smooth animations
+- 🎨 **Modern UI**: Clean and intuitive interface with smooth animations and support for dark mode
 - 📱 **Responsive Design**: Works perfectly on both desktop and mobile devices
 - 🔄 **Interactive Cards**: Expandable city cards with detailed weather information
 - 🌡️ **Comprehensive Data**: Temperature, humidity, wind speed, and more

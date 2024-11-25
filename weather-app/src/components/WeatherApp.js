@@ -1,27 +1,96 @@
-import React, { useState, useEffect } from 'react';
-import { Cloud, Sun, Droplets, Wind, Search, X, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Cloud, Sun, Droplets, Wind, Search, X, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 
 const WeatherApp = () => {
   const [city, setCity] = useState('');
   const [cities, setCities] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState('');
   const [expandedCity, setExpandedCity] = useState(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  
+  const searchRef = useRef(null);
 
-  // Replace with your actual API key
-  const API_KEY = 'YOUR_API_KEY';
-  const BASE_URL = 'https://api.openweathermap.org/data/2.5';
+  // Replace with your actual API keys
+  const WEATHER_API_KEY = 'YOUR_API_KEY';
+  const GEOCODING_API_KEY = 'YOUR_API_KEY';
+  const WEATHER_BASE_URL = 'https://api.openweathermap.org/data/2.5';
+  const GEOCODING_BASE_URL = 'https://api.openweathermap.org/geo/1.0';
 
-  const fetchWeather = async () => {
-    if (!city.trim()) return;
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSuggestions(false);
+      }
+    };
 
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Debounce function for search
+  const debounce = (func, wait) => {
+    let timeout;
+    return (...args) => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func(...args), wait);
+    };
+  };
+
+  // Fetch city suggestions
+  const fetchCitySuggestions = async (searchTerm) => {
+    if (!searchTerm.trim() || searchTerm.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    setSearchLoading(true);
+    try {
+      const response = await fetch(
+        `${GEOCODING_BASE_URL}/direct?q=${searchTerm}&limit=5&appid=${GEOCODING_API_KEY}`
+      );
+      const data = await response.json();
+      
+      // Format suggestions to include country and state
+      const formattedSuggestions = data.map(city => ({
+        name: city.name,
+        country: city.country,
+        state: city.state,
+        lat: city.lat,
+        lon: city.lon,
+        fullName: `${city.name}${city.state ? `, ${city.state}` : ''}, ${city.country}`
+      }));
+      
+      setSuggestions(formattedSuggestions);
+    } catch (err) {
+      console.error('Error fetching suggestions:', err);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // Debounced version of fetchCitySuggestions
+  const debouncedFetchSuggestions = debounce(fetchCitySuggestions, 300);
+
+  // Handle input change
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setCity(value);
+    setShowSuggestions(true);
+    debouncedFetchSuggestions(value);
+  };
+
+  const fetchWeatherForLocation = async (lat, lon, cityData) => {
     setLoading(true);
     setError('');
 
     try {
       // Current weather
       const weatherResponse = await fetch(
-        `${BASE_URL}/weather?q=${city}&units=metric&appid=${API_KEY}`
+        `${WEATHER_BASE_URL}/weather?lat=${lat}&lon=${lon}&units=metric&appid=${WEATHER_API_KEY}`
       );
       const weatherData = await weatherResponse.json();
 
@@ -31,7 +100,7 @@ const WeatherApp = () => {
 
       // 5-day forecast
       const forecastResponse = await fetch(
-        `${BASE_URL}/forecast?q=${city}&units=metric&appid=${API_KEY}`
+        `${WEATHER_BASE_URL}/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${WEATHER_API_KEY}`
       );
       const forecastData = await forecastResponse.json();
 
@@ -51,20 +120,30 @@ const WeatherApp = () => {
         return;
       }
 
-      // Add new city to the list
+      // Add new city to the list with full name
       setCities(prev => [...prev, {
-        weather: weatherData,
+        weather: {
+          ...weatherData,
+          fullName: cityData.fullName // Add full name to weather data
+        },
         forecast: Object.values(dailyForecast)
       }]);
       
       setCity('');
+      setSuggestions([]);
+      setShowSuggestions(false);
     } catch (err) {
-      setError('City not found or API error. Please try again.');
+      setError('Error fetching weather data. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSuggestionClick = (suggestion) => {
+    fetchWeatherForLocation(suggestion.lat, suggestion.lon, suggestion);
+  };
+
+  // Rest of your existing functions (removeCity, toggleExpand, getWeatherIcon)...
   const removeCity = (cityId) => {
     setCities(prev => prev.filter(city => city.weather.id !== cityId));
     if (expandedCity === cityId) {
@@ -90,25 +169,60 @@ const WeatherApp = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 to-blue-200 p-8">
       <div className="max-w-4xl mx-auto">
-        {/* Search Bar */}
+        {/* Search Bar with Suggestions */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-          <div className="flex gap-4">
-            <input
-              type="text"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="Enter city name"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onKeyPress={(e) => e.key === 'Enter' && fetchWeather()}
-            />
-            <button
-              onClick={fetchWeather}
-              disabled={loading}
-              className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 flex items-center gap-2"
-            >
-              <Search className="w-4 h-4" />
-              {loading ? 'Adding...' : 'Add City'}
-            </button>
+          <div className="relative" ref={searchRef}>
+            <div className="flex gap-4">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={city}
+                  onChange={handleInputChange}
+                  onFocus={() => setShowSuggestions(true)}
+                  placeholder="Enter city name"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {searchLoading && (
+                  <div className="absolute right-3 top-2">
+                    <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  if (suggestions.length > 0) {
+                    handleSuggestionClick(suggestions[0]);
+                  }
+                }}
+                disabled={loading || suggestions.length === 0}
+                className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Search className="w-4 h-4" />
+                )}
+                {loading ? 'Adding...' : 'Add City'}
+              </button>
+            </div>
+
+            {/* Suggestions Dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute w-full mt-2 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                {suggestions.map((suggestion, index) => (
+                  <div
+                    key={`${suggestion.name}-${index}`}
+                    className="px-4 py-2 hover:bg-gray-50 cursor-pointer transition-colors duration-150 first:rounded-t-lg last:rounded-b-lg"
+                    onClick={() => handleSuggestionClick(suggestion)}
+                  >
+                    <div className="font-medium">{suggestion.name}</div>
+                    <div className="text-sm text-gray-500">
+                      {suggestion.state && `${suggestion.state}, `}{suggestion.country}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           
           {error && (
@@ -129,7 +243,7 @@ const WeatherApp = () => {
                 <div className="flex items-center gap-4">
                   {getWeatherIcon(cityData.weather.weather[0].description)}
                   <div>
-                    <h2 className="text-xl font-bold">{cityData.weather.name}</h2>
+                    <h2 className="text-xl font-bold">{cityData.weather.fullName || cityData.weather.name}</h2>
                     <p className="text-gray-600 capitalize">{cityData.weather.weather[0].description}</p>
                   </div>
                   <span className="text-3xl font-bold">
@@ -153,7 +267,7 @@ const WeatherApp = () => {
                 </div>
               </div>
 
-              {/* Expanded Weather Details */}
+              {/* Rest of your existing expanded weather details section... */}
               {expandedCity === cityData.weather.id && (
                 <div className="border-t border-gray-100 p-6 animate-fadeIn">
                   <div className="flex justify-center gap-6 mb-6">
@@ -167,7 +281,6 @@ const WeatherApp = () => {
                     </div>
                   </div>
 
-                  {/* 5-Day Forecast */}
                   <div className="grid grid-cols-5 gap-4">
                     {cityData.forecast.map((day) => (
                       <div

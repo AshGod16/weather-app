@@ -18,7 +18,7 @@ A modern, responsive weather dashboard built with React that allows you to track
 
 Check out the live demo: [Weather Dashboard Pro](https://your-demo-link.com)
 
-![App Screenshot](/api/placeholder/800/400)
+![App Screenshot](screenshot.png)
 
 2. **Install dependencies**
 ```bash

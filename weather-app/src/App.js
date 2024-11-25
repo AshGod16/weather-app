@@ -1,12 +1,13 @@
 // src/App.js
 import React from 'react';
 import WeatherApp from './components/WeatherApp';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 function App() {
   return (
-    <div className="App">
+    <ThemeProvider>
       <WeatherApp />
-    </div>
+    </ThemeProvider>
   );
 }
 

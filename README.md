@@ -1,6 +1,4 @@
-# 🌦️ Weather Dashboard Pro
-
-![Weather App Banner](/api/placeholder/800/200)
+# 🌦️ Weather App
 
 A modern, responsive weather dashboard built with React that allows you to track weather conditions across multiple cities with beautiful visualizations and real-time updates.
 
